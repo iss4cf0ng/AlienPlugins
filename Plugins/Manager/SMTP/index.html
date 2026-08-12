@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>SMTP Manager & Relay Tester</title>
+    <style>
+        :root {
+            --win-bg: #121212;
+            --win-surface: #1a1a1a;
+            --win-surface-alt: #242424;
+            --win-border: #333333;
+            --win-border-dark: #444444;
+            --win-gray-text: #999999;
+            --win-light-text: #e0e0e0;
+            --win-highlight: #0078d4;
+            --win-highlight-text: #ffffff;
+            --win-hover: #2a2a2a;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 6px;
+            background-color: var(--win-bg);
+            color: var(--win-light-text);
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            box-sizing: border-box;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .win-window {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 1px solid var(--win-border-dark);
+            background: var(--win-surface);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .win-titlebar {
+            background: #181818;
+            color: var(--win-light-text);
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--win-border);
+        }
+
+        .win-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 8px;
+            overflow: hidden;
+            background-color: var(--win-bg);
+        }
+
+        fieldset {
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            margin: 0 0 4px 0;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        legend {
+            color: #4cc2ff;
+            font-weight: 600;
+            background: var(--win-surface);
+            padding: 0 4px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        .form-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            min-width: 90px;
+            text-align: right;
+            color: var(--win-gray-text);
+        }
+
+        input[type="text"], input[type="password"], select, textarea {
+            flex: 1;
+            background: #111111;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 8px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid var(--win-highlight);
+            border-color: transparent;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--win-light-text);
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+        button {
+            background-color: #262626;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 14px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 90px;
+            border-radius: 3px;
+            transition: background 0.1s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #333333;
+            border-color: #666;
+        }
+        button:active:not(:disabled) {
+            background-color: #1f1f1f;
+        }
+        button:disabled {
+            color: #555;
+            background-color: #181818;
+            border-color: var(--win-border);
+            cursor: default;
+        }
+
+        /* Workspace Layout */
+        .workspace {
+            display: flex;
+            flex: 1;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .mail-composer {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            border-radius: 4px;
+            padding: 8px;
+            gap: 6px;
+            overflow: hidden;
+        }
+
+        .output-box {
+            height: 140px;
+            border: 1px solid var(--win-border);
+            background: #0d0d0d;
+            color: #4ec9b0;
+            font-family: "Cascadia Code", Consolas, monospace;
+            font-size: 11px;
+            padding: 8px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 3px;
+        }
+
+        .console-box {
+            height: 60px;
+            border: 1px solid var(--win-border);
+            background: #0d0d0d;
+            color: #9cdcfe;
+            font-family: "Cascadia Code", Consolas, monospace;
+            font-size: 11px;
+            padding: 6px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 4px;
+        }
+
+        .status-bar {
+            background: var(--win-surface);
+            border-top: 1px solid var(--win-border);
+            padding: 4px 10px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--win-gray-text);
+        }
+    </style>
+</head>
+<body>
+
+<div class="win-window">
+    <div class="win-titlebar">
+        <span>SMTP Manager & Relay Tester</span>
+        <span id="sysStatusBadge" style="font-size:11px; background:#a80000; color:white; padding:2px 8px; border-radius:10px; font-weight:normal;">DISCONNECTED</span>
+    </div>
+
+    <div class="win-body">
+        <fieldset>
+            <legend>SMTP Connection Configuration</legend>
+            <div class="form-row">
+                <div class="form-group" style="max-width: 500px;">
+                    <label>SMTP Host:</label>
+                    <input type="text" id="txtHost" value="127.0.0.1">
+                </div>
+                <div class="form-group" style="max-width: 220px;">
+                    <label style="min-width: 40px;">Port:</label>
+                    <input type="text" id="txtPort" value="25">
+                </div>
+                <div class="checkbox-group" style="min-width: 220px;">
+                    <input type="checkbox" id="chkSsl"> <label for="chkSsl" style="min-width: unset; text-align: left;">Enable SSL</label>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username:</label>
+                    <input type="text" id="txtUser" placeholder="Optional Auth User">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="txtPass" placeholder="Optional Auth Password">
+                </div>
+                <div style="min-width: 200px;" class="btn-row">
+                    <button id="btnTestConn" onclick="testSmtpConnection()" disabled style="background-color: #005a9e;">Test Connection</button>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="workspace">
+            <div class="mail-composer">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>From (Sender):</label>
+                        <input type="text" id="txtFrom" value="admin@local.test">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>To (Recipient):</label>
+                        <input type="text" id="txtTo" value="target@local.test">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Subject:</label>
+                        <input type="text" id="txtSubject" value="Security Audit Test Mail">
+                    </div>
+                </div>
+                <div class="form-row" style="flex: 1; align-items: flex-start;">
+                    <label style="padding-top: 4px;">Message:</label>
+                    <textarea id="txtBody" style="height: 100%; resize: none;" placeholder="Enter message body here...">This is an automated test transmission from SMTP Manager.</textarea>
+                </div>
+                <div class="btn-row">
+                    <button id="btnSendMail" onclick="sendTestMail()" disabled style="background-color: #107c10;">Send Test Mail</button>
+                    <button onclick="clearOutput()">Clear Log</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="output-box" id="outputResult">[*] Ready for SMTP testing operations.</div>
+        <div class="console-box" id="consoleOutput">[*] SMTP Manager UI initialized. Awaiting bridge connection.</div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusBarText">Status: Disconnected</span>
+        <span>SMTP Web Edition</span>
+    </div>
+</div>
+
+<script>
+    const pluginManifest = {
+        "supportedLangs": [
+            "PHP/v5.X/OneShell",
+            "PHP/v7.X/OneShell",
+            "PHP/v8.X/OneShell",
+            "ASPX/NebulaPulsar/DarkMatter",
+            "ASHX/NebulaPulsar/DarkMatter",
+            "ASMX/NebulaPulsar/DarkMatter",
+            "JSP/NebulaPulsar/DarkMatter",
+            "JSPX/NebulaPulsar/DarkMatter",
+            "CFM/NebulaPulsar/DarkMatter",
+        ]
+    };
+
+    let currentShellType = "";
+
+    function appendLog(text) {
+        const consoleBox = document.getElementById('consoleOutput');
+        if (!text) return;
+        consoleBox.innerText += text + "\r\n";
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function appendOutput(text) {
+        const outBox = document.getElementById('outputResult');
+        if (!text) return;
+        outBox.innerText += text + "\n";
+        outBox.scrollTop = outBox.scrollHeight;
+    }
+
+    function clearOutput() {
+        document.getElementById('outputResult').innerHTML = '';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        const statusBarText = document.getElementById('statusBarText');
+        const btnTest = document.getElementById('btnTestConn');
+        const btnSend = document.getElementById('btnSendMail');
+        const badge = document.getElementById('sysStatusBadge');
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                currentShellType = await bridge.fnGetShellType();
+
+                if (pluginManifest.supportedLangs.includes(currentShellType)) {
+                    statusBarText.innerText = `Bridge Connected: ${currentShellType}`;
+                    badge.innerText = "READY";
+                    badge.style.background = "#107c10";
+                    btnTest.disabled = false;
+                    btnSend.disabled = false;
+                    appendLog("[*] WebView2 bridge connected successfully.");
+                } else {
+                    badge.innerText = "INCOMPATIBLE";
+                    badge.style.background = "#a80000";
+                    appendLog("[-] Incompatible shell type: " + currentShellType);
+                }
+            } else {
+                btnTest.disabled = false;
+                btnSend.disabled = false;
+                appendLog("[*] Running in standalone/debug mode (no native bridge).");
+            }
+        } catch (e) {
+            appendLog("[!] Bridge error: " + e.message);
+        }
+    });
+
+    async function testSmtpConnection() {
+        appendOutput("[*] Testing SMTP connection...");
+        let result = await executeSmtpAction("test", "");
+        appendOutput(result);
+    }
+
+    async function sendTestMail() {
+        const mailData = {
+            from: document.getElementById('txtFrom').value,
+            to: document.getElementById('txtTo').value,
+            subject: document.getElementById('txtSubject').value,
+            body: document.getElementById('txtBody').value
+        };
+
+        appendOutput(`[*] Sending test mail to ${mailData.to}...`);
+        let result = await executeSmtpAction("send", JSON.stringify(mailData));
+        appendOutput(result);
+    }
+
+    async function executeSmtpAction(actionType, extraData) {
+        const configParams = {
+            ip: document.getElementById('txtHost').value,
+            port: parseInt(document.getElementById('txtPort').value) || 25,
+            ssl: document.getElementById('chkSsl').checked,
+            user: document.getElementById('txtUser').value,
+            pass: document.getElementById('txtPass').value,
+            action: actionType,
+            data: extraData,
+            timeout: 15
+        };
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                const currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1).replace("/", "\\");
+                
+                const payloadCode = await bridge.fnGetPayload(currentDir, currentShellType, "payload");
+                return await bridge.fnRun(JSON.stringify(configParams), payloadCode, currentShellType);
+            } else {
+                return "[Mock Output] SMTP action '" + actionType + "' executed successfully.";
+            }
+        } catch (e) {
+            appendLog("[-] Bridge Execution Error: " + e.message);
+            return "[-] Error: " + e.message;
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>NoSQL Manager</title>
+    <style>
+        :root {
+            --win-bg: #121212;
+            --win-surface: #1a1a1a;
+            --win-surface-alt: #242424;
+            --win-border: #333333;
+            --win-border-dark: #444444;
+            --win-gray-text: #999999;
+            --win-light-text: #e0e0e0;
+            --win-highlight: #0078d4;
+            --win-highlight-text: #ffffff;
+            --win-hover: #2a2a2a;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 6px;
+            background-color: var(--win-bg);
+            color: var(--win-light-text);
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            box-sizing: border-box;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .win-window {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 1px solid var(--win-border-dark);
+            background: var(--win-surface);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .win-titlebar {
+            background: #181818;
+            color: var(--win-light-text);
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--win-border);
+        }
+
+        .win-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 8px;
+            overflow: hidden;
+            background-color: var(--win-bg);
+        }
+
+        fieldset {
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            margin: 0 0 4px 0;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        legend {
+            color: #4cc2ff;
+            font-weight: 600;
+            background: var(--win-surface);
+            padding: 0 4px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        .form-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            min-width: 80px;
+            text-align: right;
+            color: var(--win-gray-text);
+        }
+
+        input[type="text"], input[type="password"], select, textarea {
+            flex: 1;
+            background: #111111;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 8px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        input:focus, select:focus, textarea:focus {
+            outline: 2px solid var(--win-highlight);
+            border-color: transparent;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+        button {
+            background-color: #262626;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 14px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 80px;
+            border-radius: 3px;
+            transition: background 0.1s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #333333;
+            border-color: #666;
+        }
+        button:active:not(:disabled) {
+            background-color: #1f1f1f;
+        }
+        button:disabled {
+            color: #555;
+            background-color: #181818;
+            border-color: var(--win-border);
+            cursor: default;
+        }
+
+        /* Workspace Layout */
+        .workspace {
+            display: flex;
+            flex: 1;
+            gap: 8px;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 280px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            background: var(--win-surface-alt);
+            padding: 6px 10px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--win-border);
+            color: #4cc2ff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            background: #0d0d0d;
+            padding: 6px;
+            font-family: Consolas, monospace;
+            font-size: 11px;
+            overflow-y: auto;
+            color: #d4d4d4;
+            position: relative;
+        }
+
+        /* Tree View Styles */
+        .tree-node {
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 2px;
+            white-space: nowrap;
+        }
+        .tree-node:hover {
+            background-color: var(--win-hover);
+        }
+        .tree-folder {
+            color: #dcdcaa;
+        }
+        .tree-item {
+            color: #4ec9b0;
+        }
+        .tree-children {
+            padding-left: 14px;
+            display: none;
+        }
+        .tree-children.open {
+            display: block;
+        }
+
+        .context-menu {
+            display: none;
+            position: fixed;
+            background: #252526;
+            border: 1px solid #454545;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+            z-index: 1000;
+            border-radius: 3px;
+            padding: 4px 0;
+            min-width: 160px;
+        }
+        .context-menu-item {
+            padding: 6px 12px;
+            cursor: pointer;
+            color: #cccccc;
+            font-size: 11px;
+        }
+        .context-menu-item:hover {
+            background: #094771;
+            color: #ffffff;
+        }
+        .context-menu-separator {
+            height: 1px;
+            background: #333333;
+            margin: 4px 0;
+        }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-box {
+            background: #222222;
+            border: 1px solid #444;
+            padding: 16px;
+            border-radius: 5px;
+            width: 360px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.9);
+        }
+        .modal-box h3 {
+            margin: 0 0 6px 0;
+            color: #4cc2ff;
+            font-size: 14px;
+        }
+
+        .main-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            border-radius: 4px;
+            overflow: hidden;
+            padding: 8px;
+            gap: 6px;
+        }
+
+        .query-box {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .output-box {
+            flex: 1;
+            border: 1px solid var(--win-border);
+            background: #0d0d0d;
+            color: #4ec9b0;
+            font-family: "Cascadia Code", Consolas, monospace;
+            font-size: 11px;
+            padding: 8px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 3px;
+        }
+
+        .console-box {
+            height: 60px;
+            border: 1px solid var(--win-border);
+            background: #0d0d0d;
+            color: #9cdcfe;
+            font-family: "Cascadia Code", Consolas, monospace;
+            font-size: 11px;
+            padding: 6px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 4px;
+        }
+
+        .status-bar {
+            background: var(--win-surface);
+            border-top: 1px solid var(--win-border);
+            padding: 4px 10px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--win-gray-text);
+        }
+    </style>
+</head>
+<body>
+
+<div class="win-window">
+    <div class="win-titlebar">
+        <span>NoSQL Manager (Redis & MongoDB)</span>
+        <span id="sysStatusBadge" style="font-size:11px; background:#a80000; color:white; padding:2px 8px; border-radius:10px; font-weight:normal;">DISCONNECTED</span>
+    </div>
+
+    <div class="win-body">
+        <fieldset>
+            <legend>Connection Profile</legend>
+            <div class="form-row">
+                <div class="form-group" style="max-width: 220px;">
+                    <label style="min-width: 50px;">Type:</label>
+                    <select id="dbType" onchange="onDbTypeChange()">
+                        <option value="redis">Redis</option>
+                        <option value="mongodb">MongoDB</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Host:</label>
+                    <input type="text" id="txtHost" value="127.0.0.1">
+                </div>
+                <div class="form-group" style="max-width: 220px;">
+                    <label style="min-width: 40px;">Port:</label>
+                    <input type="text" id="txtPort" value="6379">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>User/DB:</label>
+                    <input type="text" id="txtAuthUser" placeholder="Username or DB Name">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="txtAuthPass" placeholder="Password">
+                </div>
+                <div style="min-width: 240px;" class="btn-row">
+                    <button id="btnConnect" onclick="toggleConnect()" disabled style="background-color: #005a9e;">Connect</button>
+                    <button onclick="clearOutput()">Clear</button>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="workspace">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <span id="sidebarTitle">Keys (Redis)</span>
+                    <div style="display:flex; gap:4px;">
+                        <button onclick="openAddKeyModal()" id="btnAddKey" disabled style="padding: 2px 6px; min-width: auto; font-size: 10px;">+ Key</button>
+                        <button onclick="refreshKeys()" id="btnRefresh" disabled style="padding: 2px 6px; min-width: auto; font-size: 10px;">Refresh</button>
+                    </div>
+                </div>
+                <div class="sidebar-content" id="sidebarList">[*] Not connected.</div>
+            </div>
+
+            <div class="main-panel">
+                <div class="query-box">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label id="lblQueryName" style="min-width: 60px;">Command:</label>
+                            <input type="text" id="txtQuery" placeholder="e.g., GET key1 OR SET key1 val" disabled>
+                        </div>
+                        <button id="btnExec" onclick="executeNoSQLQuery()" disabled>Execute</button>
+                    </div>
+                </div>
+                <div class="output-box" id="outputResult">[*] Ready for NoSQL database operation.</div>
+            </div>
+        </div>
+
+        <div class="console-box" id="consoleOutput">[*] NoSQL Manager UI initialized. Awaiting bridge connection.</div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusBarText">Status: Disconnected</span>
+        <span>NoSQL Management Tool</span>
+    </div>
+</div>
+
+<div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="ctxEditKey()">Edit Key / Value</div>
+    <div class="context-menu-item" onclick="ctxDeleteKey()">Delete Key</div>
+    <div class="context-menu-separator"></div>
+    <div class="context-menu-item" onclick="openAddKeyModal()">Add New Key</div>
+</div>
+
+<div id="folderContextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="openAddKeyInFolderModal()">Add Key in this Folder</div>
+</div>
+
+<div id="modalOverlay" class="modal-overlay">
+    <div class="modal-box">
+        <h3 id="modalTitle">Add Redis Key</h3>
+        <div class="form-row" style="margin-bottom:0;">
+            <div class="form-group" style="flex-direction:column; align-items:flex-start;">
+                <label style="text-align:left; min-width:auto;">Key Name (use `:` for nested folders):</label>
+                <input type="text" id="modalKeyInput" placeholder="e.g., folder1:subfolder:mykey" style="width:100%;">
+            </div>
+        </div>
+        <div class="form-row" style="margin-bottom:0;">
+            <div class="form-group" style="flex-direction:column; align-items:flex-start;">
+                <label style="text-align:left; min-width:auto;">Value:</label>
+                <textarea id="modalValInput" rows="4" placeholder="Enter value..." style="width:100%; resize:vertical; background:#111; color:#fff; border:1px solid #444; padding:4px; font-family:Consolas, monospace;"></textarea>
+            </div>
+        </div>
+        <div class="btn-row" style="margin-top:6px;">
+            <button onclick="closeModal()" style="background:#333;">Cancel</button>
+            <button onclick="saveModalKey()" style="background:#0078d4;">Save</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const pluginManifest = {
+        "supportedLangs": [
+            "PHP/v5.X/OneShell",
+            "PHP/v7.X/OneShell",
+            "PHP/v8.X/OneShell",
+            "ASPX/NebulaPulsar/DarkMatter",
+            "ASHX/NebulaPulsar/DarkMatter",
+            "ASMX/NebulaPulsar/DarkMatter",
+            "JSP/Nashorn/OneShell",
+            "JSP/NebulaPulsar/DarkMatter",
+            "JSPX/Nashorn/OneShell",
+            "JSPX/NebulaPulsar/DarkMatter",
+            "CFM/NebulaPulsar/DarkMatter",
+            "Perl/CGI/OneShell",
+            "Ruby/CGI/OneShell",
+        ]
+    };
+
+    let currentShellType = "";
+    let isConnected = false;
+    let selectedKeyForCtx = "";
+    let selectedFolderForCtx = "";
+
+    function appendLog(text) {
+        const consoleBox = document.getElementById('consoleOutput');
+        if (!text) return;
+        consoleBox.innerText += text + "\r\n";
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function appendOutput(text) {
+        const outBox = document.getElementById('outputResult');
+        if (!text) return;
+        outBox.innerText += text + "\n";
+        outBox.scrollTop = outBox.scrollHeight;
+    }
+
+    function clearOutput() {
+        document.getElementById('outputResult').innerText = '';
+    }
+
+    function onDbTypeChange() {
+        const dbType = document.getElementById('dbType').value;
+        const portInput = document.getElementById('txtPort');
+        const sidebarTitle = document.getElementById('sidebarTitle');
+        const txtQuery = document.getElementById('txtQuery');
+
+        if (dbType === 'redis') {
+            portInput.value = '6379';
+            sidebarTitle.innerText = 'Keys (Redis)';
+            txtQuery.placeholder = 'e.g., GET mykey / SET mykey val';
+        } else {
+            portInput.value = '27017';
+            sidebarTitle.innerText = 'Collections (Mongo)';
+            txtQuery.placeholder = 'e.g., db.users.find()';
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        const statusBarText = document.getElementById('statusBarText');
+        const btnConnect = document.getElementById('btnConnect');
+        const badge = document.getElementById('sysStatusBadge');
+
+        window.addEventListener('click', () => {
+            document.getElementById('contextMenu').style.display = 'none';
+            document.getElementById('folderContextMenu').style.display = 'none';
+        });
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                currentShellType = await bridge.fnGetShellType();
+
+                if (pluginManifest.supportedLangs.includes(currentShellType)) {
+                    statusBarText.innerText = `Bridge Connected: ${currentShellType}`;
+                    badge.innerText = "READY";
+                    badge.style.background = "#107c10";
+                    btnConnect.disabled = false;
+                    appendLog("[*] WebView2 bridge connected successfully.");
+                } else {
+                    badge.innerText = "INCOMPATIBLE";
+                    badge.style.background = "#a80000";
+                    appendLog("[-] Incompatible shell type: " + currentShellType);
+                }
+            } else {
+                btnConnect.disabled = false;
+                appendLog("[*] Running in standalone/debug mode (no native bridge).");
+            }
+        } catch (e) {
+            btnConnect.disabled = false;
+            appendLog("[!] Bridge error: " + e.message);
+        }
+    });
+
+    async function toggleConnect() {
+        const btnConnect = document.getElementById('btnConnect');
+        const badge = document.getElementById('sysStatusBadge');
+        const txtQuery = document.getElementById('txtQuery');
+        const btnExec = document.getElementById('btnExec');
+        const btnRefresh = document.getElementById('btnRefresh');
+        const btnAddKey = document.getElementById('btnAddKey');
+
+        if (!isConnected) {
+            appendLog("[*] Connecting to NoSQL database...");
+            let result = await executeNoSQLAction('connect', '');
+            
+            isConnected = true;
+            btnConnect.innerText = "Disconnect";
+            btnConnect.style.background = "#a80000";
+            badge.innerText = "CONNECTED";
+            badge.style.background = "#107c10";
+            txtQuery.disabled = false;
+            btnExec.disabled = false;
+            btnRefresh.disabled = false;
+            btnAddKey.disabled = false;
+            appendOutput("[+] Connected to NoSQL server successfully.");
+            appendOutput(result);
+
+            refreshKeys();
+        } else {
+            isConnected = false;
+            btnConnect.innerText = "Connect";
+            btnConnect.style.background = "#005a9e";
+            badge.innerText = "DISCONNECTED";
+            badge.style.background = "#a80000";
+            txtQuery.disabled = true;
+            btnExec.disabled = true;
+            btnRefresh.disabled = true;
+            btnAddKey.disabled = true;
+            document.getElementById('sidebarList').innerText = '[*] Not connected.';
+            appendOutput("[-] Disconnected from NoSQL server.");
+        }
+    }
+
+    async function refreshKeys() {
+        const dbType = document.getElementById('dbType').value;
+        if (dbType === 'redis') {
+            let res = await executeNoSQLAction('query', 'KEYS *');
+            parseRedisKeysToTree(res);
+        }
+    }
+
+    function parseRedisKeysToTree(rawResp) {
+        const sidebarList = document.getElementById('sidebarList');
+        sidebarList.innerHTML = '';
+
+        let keys = [];
+        const lines = rawResp.split(/\r?\n/);
+        for (let i = 0; i < lines.length; i++) {
+            let line = lines[i].trim();
+            if (line.startsWith('*') || line.startsWith('$') || line === '') continue;
+            keys.push(line);
+        }
+
+        if (keys.length === 0) {
+            sidebarList.innerHTML = '<span style="color:#777;">(No keys found)</span>';
+            return;
+        }
+
+        let root = {};
+        keys.forEach(key => {
+            let parts = key.split(':');
+            let curr = root;
+            parts.forEach((part, idx) => {
+                if (!curr[part]) {
+                    curr[part] = (idx === parts.length - 1) ? { __isKey: true, __fullKey: key } : {};
+                }
+                curr = curr[part];
+            });
+        });
+
+        function buildDomTree(obj, container, currentPath = "") {
+            for (let k in obj) {
+                if (k.startsWith('__')) continue;
+                let nodeData = obj[k];
+                let isKey = nodeData.__isKey;
+                let nodePath = currentPath ? `${currentPath}:${k}` : k;
+
+                let div = document.createElement('div');
+                div.style.margin = "2px 0";
+
+                let labelSpan = document.createElement('span');
+                labelSpan.className = isKey ? 'tree-node tree-item' : 'tree-node tree-folder';
+                labelSpan.innerText = (isKey ? '📄 ' : '📁 ') + k;
+
+                let childrenContainer = null;
+
+                if (!isKey) {
+                    childrenContainer = document.createElement('div');
+                    childrenContainer.className = 'tree-children';
+                    buildDomTree(nodeData, childrenContainer, nodePath);
+
+                    labelSpan.onclick = (e) => {
+                        e.stopPropagation();
+                        childrenContainer.classList.toggle('open');
+                        labelSpan.innerText = (childrenContainer.classList.contains('open' ) ? '📂 ' : '📁 ') + k;
+                    };
+
+                    labelSpan.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectedFolderForCtx = nodePath;
+
+                        const menu = document.getElementById('folderContextMenu');
+                        menu.style.display = 'block';
+                        menu.style.left = `${e.clientX}px`;
+                        menu.style.top = `${e.clientY}px`;
+                    };
+                } else {
+                    let fullKey = nodeData.__fullKey;
+                    
+                    labelSpan.onclick = async (e) => {
+                        e.stopPropagation();
+                        document.getElementById('txtQuery').value = `GET ${fullKey}`;
+                        appendOutput(`> GET ${fullKey}`);
+                        let valRes = await executeNoSQLAction('query', `GET ${fullKey}`);
+                        appendOutput(valRes);
+                    };
+
+                    labelSpan.oncontextmenu = (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectedKeyForCtx = fullKey;
+
+                        const menu = document.getElementById('contextMenu');
+                        menu.style.display = 'block';
+                        menu.style.left = `${e.clientX}px`;
+                        menu.style.top = `${e.clientY}px`;
+                    };
+                }
+
+                div.appendChild(labelSpan);
+                if (childrenContainer) div.appendChild(childrenContainer);
+                container.appendChild(div);
+            }
+        }
+
+        buildDomTree(root, sidebarList);
+    }
+
+    function openAddKeyModal() {
+        document.getElementById('contextMenu').style.display = 'none';
+        document.getElementById('modalTitle').innerText = "Add New Redis Key";
+        document.getElementById('modalKeyInput').value = "";
+        document.getElementById('modalKeyInput').disabled = false;
+        document.getElementById('modalValInput').value = "";
+        document.getElementById('modalOverlay').style.display = 'flex';
+    }
+
+    function openAddKeyInFolderModal() {
+        document.getElementById('folderContextMenu').style.display = 'none';
+        document.getElementById('modalTitle').innerText = `Add Key in folder: ${selectedFolderForCtx}`;
+        document.getElementById('modalKeyInput').value = selectedFolderForCtx + ":";
+        document.getElementById('modalKeyInput').disabled = false;
+        document.getElementById('modalValInput').value = "";
+        document.getElementById('modalOverlay').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    async function saveModalKey() {
+        let key = document.getElementById('modalKeyInput').value.trim();
+        let val = document.getElementById('modalValInput').value;
+        if (!key) {
+            alert("Key cannot be empty!");
+            return;
+        }
+
+        closeModal();
+        let cmd = `SET ${key} ${val}`;
+        appendOutput(`> ${cmd}`);
+        let res = await executeNoSQLAction('query', cmd);
+        appendOutput(res);
+        refreshKeys();
+    }
+
+    async function ctxEditKey() {
+        document.getElementById('contextMenu').style.display = 'none';
+        if (!selectedKeyForCtx) return;
+
+        let res = await executeNoSQLAction('query', `GET ${selectedKeyForCtx}`);
+        
+        document.getElementById('modalTitle').innerText = `Edit Key: ${selectedKeyForCtx}`;
+        document.getElementById('modalKeyInput').value = selectedKeyForCtx;
+        document.getElementById('modalKeyInput').disabled = true;
+        document.getElementById('modalValInput').value = res;
+        document.getElementById('modalOverlay').style.display = 'flex';
+    }
+
+    async function ctxDeleteKey() {
+        document.getElementById('contextMenu').style.display = 'none';
+        if (!selectedKeyForCtx) return;
+
+        if (confirm(`Are you sure you want to delete key: ${selectedKeyForCtx}?`)) {
+            let cmd = `DEL ${selectedKeyForCtx}`;
+            appendOutput(`> ${cmd}`);
+            let res = await executeNoSQLAction('query', cmd);
+            appendOutput(res);
+            refreshKeys();
+        }
+    }
+
+    async function executeNoSQLQuery() {
+        const txtQuery = document.getElementById('txtQuery');
+        let query = txtQuery.value.trim();
+        if (!query) return;
+
+        appendOutput("> " + query);
+        let result = await executeNoSQLAction('query', query);
+        appendOutput(result);
+        
+        if (query.toUpperCase().startsWith('SET') || query.toUpperCase().startsWith('DEL')) {
+            refreshKeys();
+        }
+    }
+
+    async function executeNoSQLAction(actionType, queryContent) {
+        const configParams = {
+            dbtype: document.getElementById('dbType').value,
+            ip: document.getElementById('txtHost').value,
+            port: parseInt(document.getElementById('txtPort').value) || 6379,
+            user: document.getElementById('txtAuthUser').value,
+            pass: document.getElementById('txtAuthPass').value,
+            action: actionType,
+            query: queryContent,
+            timeout: 10
+        };
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                const currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1).replace("/", "\\");
+                
+                const payloadCode = await bridge.fnGetPayload(currentDir, currentShellType, "payload");
+                return await bridge.fnRun(JSON.stringify(configParams), payloadCode, currentShellType);
+            } else {
+                return "[Mock Output] Executed query on " + configParams.dbtype + ": " + queryContent;
+            }
+        } catch (e) {
+            appendLog("[-] Bridge Execution Error: " + e.message);
+            return "[-] Error: " + e.message;
+        }
+    }
+</script>
+
+</body>
+</html>

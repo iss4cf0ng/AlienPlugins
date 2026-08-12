@@ -1,0 +1,17 @@
+{
+    "name": "SMTP Tester",
+    "version": "1.0",
+    "author": "iss4cf0ng/ISSAC",
+    "environment": [
+        "PHP/v5.X/OneShell",
+        "PHP/v7.X/OneShell",
+        "PHP/v8.X/OneShell",
+        "ASPX/NebulaPulsar/DarkMatter",
+        "ASHX/NebulaPulsar/DarkMatter",
+        "ASMX/NebulaPulsar/DarkMatter",
+        "JSP/NebulaPulsar/DarkMatter",
+        "JSPX/NebulaPulsar/DarkMatter",
+        "CFM/NebulaPulsar/DarkMatter"
+    ],
+    "description": "SMTP Tester"
+}

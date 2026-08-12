@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>404 - NOTHING HERE!</title>
+    <style>
+        html, body {
+            min-height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #000000;
+            color: #ffffff;
+            overflow-y: auto; 
+            overflow-x: hidden;
+        }
+        body { 
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            padding: 20px;
+        }
+        
+        .container { 
+            width: 100%;
+            max-width: 550px; 
+            background: #000000; 
+            padding: 30px; 
+            border-radius: 0px; 
+            border: 1px solid #ffffff; 
+            text-align: center;
+        }
+        
+        .notfound-image {
+            width: 300px;
+            height: 300px;
+            object-fit: contain;
+            margin: 10px auto 25px auto;
+            display: block;
+        }
+
+        .plugin-title { 
+            margin: 15px 0 5px 0;
+            font-size: 24px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            border-top: 1px solid #ffffff;
+            padding-top: 15px;
+        }
+        
+        .status-bar { 
+            background: #000000; 
+            padding: 10px; 
+            font-size: 12px; 
+            border: 1px dashed #ffffff; 
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 15px;
+            text-align: left;
+        }
+
+        .msf-info { color: #c82a0e; font-weight: bold; }
+
+        .anime-quote {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #aaaaaa;
+            font-style: italic;
+            letter-spacing: 1px;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-top: 20px;
+            color: #ffffff;
+            text-decoration: none;
+            border: 1px solid #ffffff;
+            padding: 8px 16px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        .back-link:hover {
+            background: #ffffff;
+            color: #000000;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <img src="404.png" alt="SAD" class="notfound-image">
+    
+    <div class="plugin-title">404 NOT FOUND</div>
+
+    <div class="anime-quote">
+        "Nothing here... don't abandon me!"
+    </div>
+    
+    <div class="status-bar">
+        <span class="msf-info">[-]</span> Error: I didn't make it... I will try harder next time...
+    </div>
+</div>
+
+</body>
+</html>
