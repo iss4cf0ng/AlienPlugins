@@ -1,2 +1,2 @@
-# AlienPlugins
-Repository for Alien plugins.
+# Alien Plugins
+A repository for Alien plugins.
