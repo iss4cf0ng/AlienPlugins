@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>Active Directory Explorer</title>
+    <style>
+        :root {
+            --win-bg: #121212;
+            --win-surface: #1a1a1a;
+            --win-surface-alt: #242424;
+            --win-border: #333333;
+            --win-border-dark: #444444;
+            --win-gray-text: #999999;
+            --win-light-text: #e0e0e0;
+            --win-highlight: #0078d4;
+            --win-highlight-text: #ffffff;
+            --win-hover: #2a2a2a;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 6px;
+            background-color: var(--win-bg);
+            color: var(--win-light-text);
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+
+        .win-window {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 1px solid var(--win-border-dark);
+            background: var(--win-surface);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .win-titlebar {
+            background: #2d2d2d;
+            color: var(--win-light-text);
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--win-border);
+        }
+
+        .win-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 8px;
+            overflow: hidden;
+            background-color: var(--win-bg);
+        }
+
+        fieldset {
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            margin: 0 0 4px 0;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        legend {
+            color: #4cc2ff;
+            font-weight: 600;
+            background: var(--win-surface);
+            padding: 0 4px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        .form-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            min-width: 80px;
+            text-align: right;
+            color: var(--win-gray-text);
+        }
+
+        input[type="text"], input[type="password"] {
+            flex: 1;
+            background: #1e1e1e;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 8px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        input:focus {
+            outline: 2px solid var(--win-highlight);
+            border-color: transparent;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+        button {
+            background-color: #333333;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 14px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 80px;
+            border-radius: 3px;
+            transition: background 0.1s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #3e3e3e;
+            border-color: #666;
+        }
+        button:active:not(:disabled) {
+            background-color: #2a2a2a;
+        }
+        button:disabled {
+            color: #666;
+            background-color: #282828;
+            border-color: var(--win-border);
+            cursor: default;
+        }
+
+        /* SplitContainer Styles */
+        .explorer-splitter {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .pane-box {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #leftPane {
+            width: 35%;
+            min-width: 150px;
+        }
+
+        #rightPane {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .splitter-bar {
+            width: 5px;
+            background: var(--win-bg);
+            cursor: col-resize;
+            border-left: 1px solid var(--win-border);
+            border-right: 1px solid var(--win-border);
+            transition: background 0.2s;
+        }
+        .splitter-bar:hover, .splitter-bar.dragging {
+            background: var(--win-highlight);
+        }
+
+        .pane-header {
+            background: var(--win-surface-alt);
+            border-bottom: 1px solid var(--win-border);
+            padding: 6px 10px;
+            font-weight: 600;
+            color: var(--win-light-text);
+        }
+
+        .pane-content {
+            flex: 1;
+            overflow: auto;
+            padding: 6px;
+            background: var(--win-surface);
+        }
+
+        /* Tree Structure */
+        ul.tree {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        ul.tree ul {
+            list-style: none;
+            padding-left: 20px;
+            margin: 0;
+        }
+        .tree-node {
+            cursor: pointer;
+            padding: 3px 6px;
+            display: inline-block;
+            white-space: nowrap;
+            border-radius: 3px;
+        }
+        .tree-node:hover {
+            background-color: var(--win-hover);
+        }
+        .tree-node.selected {
+            background-color: var(--win-selected-bg);
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        /* Attribute Table */
+        table.attr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: left;
+        }
+        table.attr-table th {
+            background: var(--win-surface-alt);
+            border-bottom: 1px solid var(--win-border);
+            border-right: 1px solid var(--win-border);
+            padding: 6px 8px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            color: var(--win-light-text);
+        }
+        table.attr-table td {
+            border-bottom: 1px solid #333333;
+            border-right: 1px solid #333333;
+            padding: 5px 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            color: var(--win-light-text);
+        }
+        table.attr-table tr:hover {
+            background-color: var(--win-hover);
+        }
+
+        .console-box {
+            height: 90px;
+            border: 1px solid var(--win-border);
+            background: #181818;
+            color: #4ec9b0;
+            font-family: "Cascadia Code", Consolas, "Courier New", Courier, monospace;
+            font-size: 11px;
+            padding: 6px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 4px;
+        }
+
+        .status-bar {
+            background: var(--win-surface);
+            border-top: 1px solid var(--win-border);
+            padding: 4px 10px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--win-gray-text);
+        }
+    </style>
+</head>
+<body>
+
+<div class="win-window">
+    <div class="win-titlebar">
+        <span>Active Directory Explorer</span>
+        <span id="sysStatusBadge" style="font-size:11px; background:#107c10; color:white; padding:2px 8px; border-radius:10px; font-weight:normal;">READY</span>
+    </div>
+
+    <div class="win-body">
+        <fieldset>
+            <legend>LDAP Connection Parameters</legend>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Server:</label>
+                    <input type="text" id="txtServer" value="127.0.0.1">
+                </div>
+                <div class="form-group" style="max-width: 220px;">
+                    <label style="min-width: 40px;">Port:</label>
+                    <input type="text" id="txtPort" value="389">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Base DN:</label>
+                    <input type="text" id="txtBaseDn" value="DC=domain,DC=local">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username:</label>
+                    <input type="text" id="txtUsername" value="">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="txtPassword" value="">
+                </div>
+                <div style="min-width: 250px;" class="btn-row">
+                    <button id="btnExploit" onclick="executePlugin()" disabled>Connect</button>
+                    <button id="btnBloodHound" onclick="executeBloodHound()" disabled style="background-color: #9b59b6;">BloodHound</button>
+                    <button onclick="clearConsole()">Clear</button>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- SplitContainer -->
+        <div class="explorer-splitter" id="splitterContainer">
+            <div class="pane-box" id="leftPane">
+                <div class="pane-header">Directory Tree</div>
+                <div class="pane-content" id="treeView">
+                    <span style="color: var(--win-gray-text);">[*] Awaiting connection...</span>
+                </div>
+            </div>
+            <div class="splitter-bar" id="splitterBar"></div>
+            <div class="pane-box" id="rightPane">
+                <div class="pane-header">Object Attributes</div>
+                <div class="pane-content" style="padding: 0;" id="detailsView">
+                    <table class="attr-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">Attribute</th>
+                                <th style="width: 60%;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attrTableBody">
+                            <tr><td colspan="2" style="color: var(--win-gray-text); text-align: center; padding: 30px;">Select an object from the tree.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="console-box" id="consoleOutput">[*] System initialized.</div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusBarText">Status: Idle</span>
+        <span>AD Explorer</span>
+    </div>
+</div>
+
+<script>
+    let currentShellType = "";
+    let pluginManifest = { "supportedLangs": [] };
+    let currentDir = "";
+    let isRunning = false;
+
+    const splitterBar = document.getElementById('splitterBar');
+    const leftPane = document.getElementById('leftPane');
+    const splitterContainer = document.getElementById('splitterContainer');
+
+    let isDragging = false;
+
+    splitterBar.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        splitterBar.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const containerRect = splitterContainer.getBoundingClientRect();
+        let newWidth = e.clientX - containerRect.left;
+        
+        if (newWidth < 150) newWidth = 150;
+        if (newWidth > containerRect.width - 150) newWidth = containerRect.width - 150;
+        
+        let percentage = (newWidth / containerRect.width) * 100;
+        leftPane.style.width = percentage + '%';
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            splitterBar.classList.remove('dragging');
+            document.body.style.cursor = 'default';
+        }
+    });
+
+    function appendLog(text) {
+        const consoleBox = document.getElementById('consoleOutput');
+        if (!text)
+            return;
+
+        consoleBox.innerText += text + "\r\n";
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function clearConsole() {
+        document.getElementById('consoleOutput').innerHTML = '';
+        document.getElementById('treeView').innerHTML = '<span style="color: var(--win-gray-text);">[*] Tree reset.</span>';
+        document.getElementById('attrTableBody').innerHTML = '<tr><td colspan="2" style="color: var(--win-gray-text); text-align: center; padding: 30px;">Select an object from the tree.</td></tr>';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        const statusBarText = document.getElementById('statusBarText');
+        const btnExploit = document.getElementById('btnExploit');
+        const badge = document.getElementById('sysStatusBadge');
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1);
+
+                const availableJson = await bridge.fnAvailableEnvironment(currentDir);
+                const available = JSON.parse(availableJson || "[]");
+
+                pluginManifest = {
+                    "supportedLangs": available
+                };
+                
+                currentShellType = await bridge.fnGetShellType();
+
+                if (pluginManifest.supportedLangs.includes(currentShellType)) {
+                    statusBarText.innerText = `Connected to Gateway Environment: ${currentShellType}`;
+                    badge.innerText = currentShellType.toUpperCase();
+                    badge.style.background = "#107c10";
+                    btnExploit.disabled = false;
+                    document.getElementById('btnBloodHound').disabled = false;
+
+                    appendLog("[*] WebView2 bridge connection established successfully.");
+                } else {
+                    statusBarText.innerText = `Incompatible shell type: ${currentShellType}`;
+                    badge.innerText = "INCOMPATIBLE";
+                    badge.style.background = "#a80000";
+
+                    appendLog(`[-] Aborted: Requires [${pluginManifest.supportedLangs.join(', ')}].`);
+                }
+            } else {
+                appendLog("[!] Warning: Host bridge not found. Running in standalone mock mode.");
+                btnExploit.disabled = false;
+            }
+        } catch (e) {
+            appendLog("[!] Bridge exception caught: " + e.message);
+        }
+    });
+
+    function renderTree(node, containerElement) {
+        if (!node) return;
+
+        let rootUl = containerElement.querySelector('ul.tree');
+        if (!rootUl) {
+            rootUl = document.createElement('ul');
+            rootUl.className = 'tree';
+            containerElement.appendChild(rootUl);
+        }
+
+        function createNodeElement(obj) {
+            let li = document.createElement('li');
+            let itemDiv = document.createElement('div');
+            itemDiv.className = 'tree-node';
+            
+            let icon = "📁";
+            if (obj.type === 'user') icon = "👤";
+            if (obj.type === 'ou') icon = "📂";
+            if (obj.type === 'computer') icon = "💻";
+            
+            itemDiv.innerText = `${icon} ${obj.name}`;
+            
+            itemDiv.onclick = (e) => {
+                e.stopPropagation();
+                document.querySelectorAll('.tree-node').forEach(el => el.classList.remove('selected'));
+                itemDiv.classList.add('selected');
+
+                const tbody = document.getElementById('attrTableBody');
+                tbody.innerHTML = '';
+
+                const attrs = obj.attributes || {};
+                if (Object.keys(attrs).length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="2" style="color: var(--win-gray-text); text-align: center;">No attributes available</td></tr>`;
+                    return;
+                }
+
+                for (const [key, val] of Object.entries(attrs)) {
+                    let tr = document.createElement('tr');
+                    let displayVal = val;
+                    if (val === "System.__ComObject" || val === "System.Byte[]") {
+                        displayVal = `<span style="color:var(--win-gray-text); font-style:italic;">[${val}]</span>`;
+                    }
+                    tr.innerHTML = `<td><b>${key}</b></td><td>${displayVal}</td>`;
+                    tbody.appendChild(tr);
+                }
+                document.getElementById('statusBarText').innerText = `Selected: ${obj.name}`;
+            };
+
+            li.appendChild(itemDiv);
+
+            if (obj.children && obj.children.length > 0) {
+                let subUl = document.createElement('ul');
+                obj.children.forEach(child => {
+                    subUl.appendChild(createNodeElement(child));
+                });
+                li.appendChild(subUl);
+            }
+
+            return li;
+        }
+
+        rootUl.appendChild(createNodeElement(node));
+    }
+
+    async function executePlugin() {
+        if (isRunning) return;
+        isRunning = true;
+
+        const btnExploit = document.getElementById('btnExploit');
+        btnExploit.disabled = true;
+        const treeView = document.getElementById('treeView');
+        treeView.innerHTML = '<span style="color: #4cc2ff;">[*] Querying LDAP directory via payload...</span>';
+
+        const configParams = {
+            server: document.getElementById('txtServer').value,
+            port: parseInt(document.getElementById('txtPort').value) || 389,
+            username: document.getElementById('txtUsername').value,
+            password: document.getElementById('txtPassword').value,
+            basedn: document.getElementById('txtBaseDn').value
+        };
+
+        try {
+            let bridge = null;
+            let payloadCode = "";
+            let currentDir = "";
+
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                bridge = window.chrome.webview.hostObjects.nativeBridge;
+                currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1).replace("/", "\\");
+                payloadCode = await bridge.fnGetPayload(currentDir, currentShellType, "payload");
+            }
+
+            if (bridge) {
+                const szJsonConfig = JSON.stringify(configParams);
+                const rawResult = await bridge.fnRun(szJsonConfig, payloadCode, currentShellType);
+                
+                appendLog("[Raw Output Length]: " + rawResult.length);
+
+                let jsonStr = rawResult;
+                const firstBrace = rawResult.indexOf('{');
+                const lastBrace = rawResult.lastIndexOf('}');
+                
+                if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                    jsonStr = rawResult.substring(firstBrace, lastBrace + 1);
+                }
+
+                try {
+                    let parsed = JSON.parse(jsonStr);
+                    if (parsed.status === 'success' && parsed.structure) {
+                        treeView.innerHTML = '';
+                        renderTree(parsed.structure, treeView);
+                        appendLog(`[+] Directory tree successfully rendered. Mode: ${parsed.mode}`);
+                        document.getElementById('statusBarText').innerText = "Query completed successfully.";
+                    } else {
+                        treeView.innerHTML = '<span style="color: #f85149;">[-] Query returned error status.</span>';
+                    }
+                } catch (jsonErr) {
+                    appendLog("[-] JSON Parse Exception: " + jsonErr.message);
+                    appendLog("Response:");
+                    appendLog(jsonStr);
+
+                    treeView.innerHTML = '<span style="color: #f85149;">[-] Failed to parse payload output JSON.</span>';
+                }
+            } else {
+                appendLog("[!] Mock mode executed.");
+                treeView.innerHTML = '';
+                let mockData = {
+                    'name': configParams.basedn,
+                    'type': 'domain',
+                    'attributes': { 'distinguishedName': configParams.basedn, 'whenCreated': '2026/01/01' },
+                    'children': [
+                        { 
+                            'name': 'CN=Administrator', 
+                            'type': 'user', 
+                            'attributes': { 'sAMAccountName': 'administrator', 'userPrincipalName': 'admin@local.net' } 
+                        }
+                    ]
+                };
+                renderTree(mockData, treeView);
+            }
+
+        } catch (e) {
+            appendLog("[-] Execution failure: " + e.message);
+            treeView.innerHTML = '<span style="color: #f85149;">[-] Critical error occurred.</span>';
+        } finally {
+            isRunning = false;
+            btnExploit.disabled = false;
+        }
+    }
+
+    async function executeBloodHound() {
+        if (isRunning) return;
+        isRunning = true;
+
+        const btnBh = document.getElementById('btnBloodHound');
+        btnBh.disabled = true;
+        appendLog("[*] Starting BloodHound data collection...");
+
+        const configParams = {
+            server: document.getElementById('txtServer').value,
+            port: parseInt(document.getElementById('txtPort').value) || 389,
+            username: document.getElementById('txtUsername').value,
+            password: document.getElementById('txtPassword').value,
+            basedn: document.getElementById('txtBaseDn').value,
+            action: "bloodhound"
+        };
+
+        try {
+            let bridge = null;
+            let payloadCode = "";
+            let currentDir = "";
+
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                bridge = window.chrome.webview.hostObjects.nativeBridge;
+                currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1).replace("/", "\\");
+                payloadCode = await bridge.fnGetPayload(currentDir, currentShellType, "payload");
+            }
+
+            if (bridge) {
+                const szJsonConfig = JSON.stringify(configParams);
+                const rawResult = await bridge.fnRun(szJsonConfig, payloadCode, currentShellType);
+                
+                let jsonStr = rawResult;
+                const firstBrace = rawResult.indexOf('{');
+                const lastBrace = rawResult.lastIndexOf('}');
+                
+                if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+                    jsonStr = rawResult.substring(firstBrace, lastBrace + 1);
+                }
+
+                await bridge.fnSaveFileText("bloodhound.json", jsonStr);
+            } else {
+                appendLog("[!] Mock mode: BloodHound export simulated.");
+            }
+        } catch (e) {
+            appendLog("[-] BloodHound execution failure: " + e.message);
+        } finally {
+            isRunning = false;
+            btnBh.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>

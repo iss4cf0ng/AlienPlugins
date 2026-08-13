@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+    <meta charset="UTF-8">
+    <title>FTP File Explorer</title>
+    <style>
+        :root {
+            --win-bg: #121212;
+            --win-surface: #1a1a1a;
+            --win-surface-alt: #242424;
+            --win-border: #333333;
+            --win-border-dark: #444444;
+            --win-gray-text: #999999;
+            --win-light-text: #e0e0e0;
+            --win-highlight: #0078d4;
+            --win-highlight-text: #ffffff;
+            --win-hover: #2a2a2a;
+            --win-selected-bg: #004881;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 6px;
+            background-color: var(--win-bg);
+            color: var(--win-light-text);
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            box-sizing: border-box;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .win-window {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border: 1px solid var(--win-border-dark);
+            background: var(--win-surface);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.8);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .win-titlebar {
+            background: #181818;
+            color: var(--win-light-text);
+            padding: 8px 12px;
+            font-weight: 600;
+            font-size: 13px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--win-border);
+        }
+
+        .win-body {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            gap: 8px;
+            overflow: hidden;
+            background-color: var(--win-bg);
+        }
+
+        fieldset {
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            margin: 0 0 4px 0;
+            padding: 8px 12px;
+            border-radius: 4px;
+        }
+        legend {
+            color: #4cc2ff;
+            font-weight: 600;
+            background: var(--win-surface);
+            padding: 0 4px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 6px;
+            align-items: center;
+        }
+        .form-row:last-child {
+            margin-bottom: 0;
+        }
+        .form-group {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        label {
+            min-width: 80px;
+            text-align: right;
+            color: var(--win-gray-text);
+        }
+
+        input[type="text"], input[type="password"] {
+            flex: 1;
+            background: #111111;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 8px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        input:focus {
+            outline: 2px solid var(--win-highlight);
+            border-color: transparent;
+        }
+
+        .btn-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+        button {
+            background-color: #262626;
+            color: var(--win-light-text);
+            border: 1px solid var(--win-border-dark);
+            padding: 4px 14px;
+            font-family: "Segoe UI", Tahoma, Arial, sans-serif;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 80px;
+            border-radius: 3px;
+            transition: background 0.1s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #333333;
+            border-color: #666;
+        }
+        button:active:not(:disabled) {
+            background-color: #1f1f1f;
+        }
+        button:disabled {
+            color: #555;
+            background-color: #181818;
+            border-color: var(--win-border);
+            cursor: default;
+        }
+
+        .explorer-splitter {
+            display: flex;
+            flex: 1;
+            min-height: 0;
+            border: 1px solid var(--win-border);
+            background: var(--win-surface);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .pane-box {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #leftPane {
+            width: 35%;
+            min-width: 150px;
+        }
+
+        #rightPane {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .splitter-bar {
+            width: 5px;
+            background: var(--win-bg);
+            cursor: col-resize;
+            border-left: 1px solid var(--win-border);
+            border-right: 1px solid var(--win-border);
+            transition: background 0.2s;
+        }
+        .splitter-bar:hover, .splitter-bar.dragging {
+            background: var(--win-highlight);
+        }
+
+        .pane-header {
+            background: var(--win-surface-alt);
+            border-bottom: 1px solid var(--win-border);
+            padding: 6px 10px;
+            font-weight: 600;
+            color: var(--win-light-text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pane-content {
+            flex: 1;
+            overflow: auto;
+            padding: 6px;
+            background: var(--win-surface);
+        }
+
+        /* Tree Styles */
+        ul.tree, ul.tree ul {
+            list-style: none;
+            padding-left: 16px;
+            margin: 0;
+        }
+        ul.tree {
+            padding-left: 0;
+        }
+        .tree-item {
+            margin: 2px 0;
+        }
+        .tree-node {
+            cursor: pointer;
+            padding: 2px 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+        .tree-node:hover {
+            background-color: var(--win-hover);
+        }
+        .tree-node.selected {
+            background-color: var(--win-selected-bg);
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .toggle-btn {
+            width: 14px;
+            text-align: center;
+            font-size: 10px;
+            cursor: pointer;
+            color: var(--win-gray-text);
+        }
+
+        .loading-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 2px solid var(--win-gray-text);
+            border-top-color: var(--win-highlight);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        table.attr-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: left;
+        }
+        table.attr-table th {
+            background: var(--win-surface-alt);
+            border-bottom: 1px solid var(--win-border);
+            border-right: 1px solid var(--win-border);
+            padding: 6px 8px;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            color: var(--win-light-text);
+        }
+        table.attr-table td {
+            border-bottom: 1px solid #222222;
+            border-right: 1px solid #222222;
+            padding: 5px 8px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 300px;
+            color: var(--win-light-text);
+        }
+        table.attr-table tr:hover {
+            background-color: var(--win-hover);
+        }
+        table.attr-table tr.selected {
+            background-color: var(--win-selected-bg) !important;
+        }
+
+        .context-menu {
+            display: none;
+            position: absolute;
+            background: var(--win-surface-alt);
+            border: 1px solid var(--win-border-dark);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            border-radius: 4px;
+            z-index: 1000;
+            padding: 4px 0;
+            min-width: 140px;
+        }
+        .context-menu-item {
+            padding: 6px 14px;
+            cursor: pointer;
+            color: var(--win-light-text);
+            font-size: 12px;
+        }
+        .context-menu-item:hover {
+            background-color: var(--win-highlight);
+            color: #fff;
+        }
+        .context-menu-divider {
+            height: 1px;
+            background: var(--win-border);
+            margin: 4px 0;
+        }
+
+        .console-box {
+            height: 90px;
+            border: 1px solid var(--win-border);
+            background: #0d0d0d;
+            color: #4ec9b0;
+            font-family: "Cascadia Code", Consolas, "Courier New", Courier, monospace;
+            font-size: 11px;
+            padding: 6px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            border-radius: 4px;
+        }
+
+        .status-bar {
+            background: var(--win-surface);
+            border-top: 1px solid var(--win-border);
+            padding: 4px 10px;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--win-gray-text);
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-window {
+            background: var(--win-surface);
+            border: 1px solid var(--win-border-dark);
+            border-radius: 4px;
+            width: 70%;
+            height: 70%;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.9);
+        }
+        .modal-header {
+            background: var(--win-surface-alt);
+            padding: 8px 12px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--win-border);
+            display: flex;
+            justify-content: space-between;
+        }
+        .modal-body {
+            flex: 1;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-body textarea {
+            flex: 1;
+            background: #111;
+            color: #e0e0e0;
+            border: 1px solid var(--win-border);
+            font-family: "Cascadia Code", Consolas, monospace;
+            padding: 8px;
+            resize: none;
+        }
+        .modal-footer {
+            padding: 8px 12px;
+            border-top: 1px solid var(--win-border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="win-window">
+    <div class="win-titlebar">
+        <span>FTP File Explorer</span>
+        <span id="sysStatusBadge" style="font-size:11px; background:#107c10; color:white; padding:2px 8px; border-radius:10px; font-weight:normal;">READY</span>
+    </div>
+
+    <div class="win-body">
+        <fieldset>
+            <legend>FTP Connection Parameters</legend>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Server:</label>
+                    <input type="text" id="txtServer" value="127.0.0.1">
+                </div>
+                <div class="form-group" style="max-width: 220px;">
+                    <label style="min-width: 40px;">Port:</label>
+                    <input type="text" id="txtPort" value="21">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Path:</label>
+                    <input type="text" id="txtPath" value="/">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Username:</label>
+                    <input type="text" id="txtUsername" value="">
+                </div>
+                <div class="form-group">
+                    <label>Password:</label>
+                    <input type="password" id="txtPassword" value="">
+                </div>
+                <div style="min-width: 320px;" class="btn-row">
+                    <button id="btnConnect" onclick="initRootTree()" disabled>Connect</button>
+                    <button id="btnUpload" onclick="triggerUpload()" disabled style="background-color: #005a9e;">Upload</button>
+                    <button id="btnMkdir" onclick="promptMkdir()" disabled style="background-color: #2d5a27;">Mkdir</button>
+                    <button onclick="clearConsole()">Clear</button>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="explorer-splitter" id="splitterContainer">
+            <div class="pane-box" id="leftPane">
+                <div class="pane-header">
+                    <span>Remote Directory Tree</span>
+                    <span id="treeLoading" style="display: none;"></span>
+                </div>
+                <div class="pane-content" id="treeView">
+                    <span style="color: var(--win-gray-text);">[*] Awaiting FTP connection...</span>
+                </div>
+            </div>
+            <div class="splitter-bar" id="splitterBar"></div>
+            <div class="pane-box" id="rightPane">
+                <div class="pane-header" id="rightPaneHeader">File Details & Properties</div>
+                <div class="pane-content" style="padding: 0;" id="detailsView">
+                    <table class="attr-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 40%;">Item Name</th>
+                                <th style="width: 60%;">Details / Permissions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attrTableBody">
+                            <tr><td colspan="2" style="color: var(--win-gray-text); text-align: center; padding: 30px;">Select a folder from the tree.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="console-box" id="consoleOutput">[*] FTP Explorer initialized. Ready for operations.</div>
+    </div>
+
+    <div class="status-bar">
+        <span id="statusBarText">Status: Idle</span>
+        <span>FTP Manager</span>
+    </div>
+</div>
+
+<!-- Text Editor Modal -->
+<div id="editorModal" class="modal-overlay">
+    <div class="modal-window">
+        <div class="modal-header">
+            <span id="modalTitle">View / Edit File</span>
+            <span style="cursor:pointer;" onclick="closeModal()">✕</span>
+        </div>
+        <div class="modal-body">
+            <textarea id="fileEditorText" spellcheck="false"></textarea>
+        </div>
+        <div class="modal-footer">
+            <button onclick="saveAndUploadFile()" style="background-color: #0078d4;">Save & Upload</button>
+            <button onclick="closeModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Context Menu -->
+<div id="contextMenu" class="context-menu">
+    <div class="context-menu-item" onclick="handleMenuAction('edit')">View / Edit File</div>
+    <div class="context-menu-item" onclick="handleMenuAction('download')">Download</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" onclick="handleMenuAction('upload')">Upload File</div>
+    <div class="context-menu-item" onclick="handleMenuAction('mkdir')">New Directory</div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" onclick="handleMenuAction('delete')" style="color: #f85149;">Delete</div>
+</div>
+
+<script>
+    let currentShellType = "";
+    let pluginManifest = { "supportedLangs": [] };
+    let currentDir = "";
+    let isRunning = false;
+    let selectedItemName = "";
+    let selectedItemIsDir = false;
+    let activeFolderPath = "/";
+
+    const splitterBar = document.getElementById('splitterBar');
+    const leftPane = document.getElementById('leftPane');
+    const splitterContainer = document.getElementById('splitterContainer');
+    const contextMenu = document.getElementById('contextMenu');
+
+    let isDragging = false;
+
+    splitterBar.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        splitterBar.classList.add('dragging');
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+    });
+
+    window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const containerRect = splitterContainer.getBoundingClientRect();
+        let newWidth = e.clientX - containerRect.left;
+        if (newWidth < 150) newWidth = 150;
+        if (newWidth > containerRect.width - 150) newWidth = containerRect.width - 150;
+        leftPane.style.width = ((newWidth / containerRect.width) * 100) + '%';
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (isDragging) {
+            isDragging = false;
+            splitterBar.classList.remove('dragging');
+            document.body.style.cursor = 'default';
+        }
+    });
+
+    window.addEventListener('click', () => {
+        contextMenu.style.display = 'none';
+    });
+
+    function appendLog(text) {
+        const consoleBox = document.getElementById('consoleOutput');
+        if (!text) return;
+        consoleBox.innerText += text + "\r\n";
+        consoleBox.scrollTop = consoleBox.scrollHeight;
+    }
+
+    function clearConsole() {
+        document.getElementById('consoleOutput').innerHTML = '';
+        document.getElementById('treeView').innerHTML = '<span style="color: var(--win-gray-text);">[*] Tree reset.</span>';
+        document.getElementById('attrTableBody').innerHTML = '<tr><td colspan="2" style="color: var(--win-gray-text); text-align: center; padding: 30px;">Select a folder from the tree.</td></tr>';
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+        const statusBarText = document.getElementById('statusBarText');
+        const btnConnect = document.getElementById('btnConnect');
+        const btnMkdir = document.getElementById('btnMkdir');
+        const btnUpload = document.getElementById('btnUpload');
+        const badge = document.getElementById('sysStatusBadge');
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1);
+
+                const availableJson = await bridge.fnAvailableEnvironment(currentDir);
+                const available = JSON.parse(availableJson || "[]");
+
+                pluginManifest = {
+                    "supportedLangs": available
+                };
+
+                currentShellType = await bridge.fnGetShellType();
+
+                if (pluginManifest.supportedLangs.includes(currentShellType)) {
+                    statusBarText.innerText = `Connected: ${currentShellType}`;
+                    badge.innerText = currentShellType.toUpperCase();
+                    badge.style.background = "#107c10";
+                    btnConnect.disabled = false;
+                    btnMkdir.disabled = false;
+                    btnUpload.disabled = false;
+                    appendLog("[*] WebView2 bridge connected.");
+                } else {
+                    badge.innerText = "INCOMPATIBLE";
+                    badge.style.background = "#a80000";
+                }
+            } else {
+                btnConnect.disabled = false;
+                btnMkdir.disabled = false;
+                btnUpload.disabled = false;
+            }
+        } catch (e) {
+            appendLog("[!] Bridge error: " + e.message);
+        }
+    });
+
+    function initRootTree() {
+        document.getElementById('txtPath').value = "/";
+        activeFolderPath = "/";
+        let treeView = document.getElementById('treeView');
+        treeView.innerHTML = `
+            <ul class="tree">
+                <li class="tree-item" data-path="/">
+                    <div class="tree-node selected" onclick="selectFolderNode(this, '/')">
+                        <span class="toggle-btn" onclick="toggleSubTree(event, this)">▶</span> 📁 /
+                    </div>
+                    <ul class="sub-tree" style="display:none;"></ul>
+                </li>
+            </ul>
+        `;
+
+        loadDirectoryContents("/");
+    }
+
+    async function toggleSubTree(e, toggleEl) {
+        e.stopPropagation();
+        let liItem = toggleEl.closest('.tree-item');
+        let subTreeUl = liItem.querySelector('.sub-tree');
+        let folderPath = liItem.getAttribute('data-path');
+
+        if (subTreeUl.style.display === 'none') {
+            toggleEl.innerText = '▼';
+            if (subTreeUl.children.length === 0) {
+                await fetchSubDirectories(folderPath, subTreeUl);
+            }
+            subTreeUl.style.display = 'block';
+        } else {
+            toggleEl.innerText = '▶';
+            subTreeUl.style.display = 'none';
+        }
+    }
+
+    async function selectFolderNode(nodeEl, folderPath) {
+        document.querySelectorAll('.tree-node').forEach(el => el.classList.remove('selected'));
+        nodeEl.classList.add('selected');
+        activeFolderPath = folderPath;
+        document.getElementById('txtPath').value = folderPath;
+        document.getElementById('rightPaneHeader').innerText = `Contents of: ${folderPath}`;
+        
+        await loadDirectoryContents(folderPath);
+    }
+
+    async function loadDirectoryContents(targetPath) {
+        let result = await executeFtpActionRaw('list', targetPath);
+        if (result && result.startsWith("[+] SUCCESS_LIST")) {
+            const lines = result.replace("[+] SUCCESS_LIST", "").trim().split('\n');
+            let tableHtml = "";
+
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                const parts = line.trim().split(/\s+/);
+                const fileName = parts.slice(3).join(' ') || parts[parts.length - 1];
+                const isDir = line.toUpperCase().includes("<DIR>") || line.startsWith("d");
+
+                if (fileName && fileName !== "." && fileName !== "..") {
+                    const icon = isDir ? "📁" : "📄";
+                    let dblClickAttr = isDir ? `` : `ondblclick="viewFile('${fileName}')"`;
+                    
+                    tableHtml += `<tr onclick="selectRow(this, '${fileName}', ${isDir})" oncontextmenu="showContextMenu(event, '${fileName}', ${isDir})" ${dblClickAttr}>
+                        <td>${icon} ${fileName}</td>
+                        <td>${line.trim()}</td>
+                    </tr>`;
+                }
+            });
+
+            document.getElementById('attrTableBody').innerHTML = tableHtml || '<tr><td colspan="2" style="color: var(--win-gray-text); text-align: center;">Directory is empty.</td></tr>';
+        } else {
+            appendLog(result);
+        }
+    }
+
+    async function fetchSubDirectories(parentPath, containerUl) {
+        let result = await executeFtpActionRaw('list', parentPath);
+        if (result && result.startsWith("[+] SUCCESS_LIST")) {
+            const lines = result.replace("[+] SUCCESS_LIST", "").trim().split('\n');
+            let subHtml = "";
+            let normalizedParent = parentPath.endsWith('/') ? parentPath : parentPath + '/';
+
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                const parts = line.trim().split(/\s+/);
+                const fileName = parts.slice(3).join(' ') || parts[parts.length - 1];
+                const isDir = line.toUpperCase().includes("<DIR>") || line.startsWith("d");
+
+                if (isDir && fileName && fileName !== "." && fileName !== "..") {
+                    let subPath = normalizedParent + fileName;
+                    subHtml += `
+                        <li class="tree-item" data-path="${subPath}">
+                            <div class="tree-node" onclick="selectFolderNode(this, '${subPath}')">
+                                <span class="toggle-btn" onclick="toggleSubTree(event, this)">▶</span> 📁 ${fileName}
+                            </div>
+                            <ul class="sub-tree" style="display:none;"></ul>
+                        </li>
+                    `;
+                }
+            });
+            containerUl.innerHTML = subHtml;
+        }
+    }
+
+    async function executeFtpActionRaw(actionType, targetPath, extraContent = "") {
+        const configParams = {
+            ip: document.getElementById('txtServer').value,
+            port: parseInt(document.getElementById('txtPort').value) || 21,
+            user: document.getElementById('txtUsername').value,
+            pass: document.getElementById('txtPassword').value,
+            path: targetPath,
+            action: actionType,
+            content: extraContent,
+            timeout: 10
+        };
+
+        try {
+            if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
+                const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                const currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1).replace("/", "\\");
+                const payloadCode = await bridge.fnGetPayload(currentDir, currentShellType, "payload");
+                return await bridge.fnRun(JSON.stringify(configParams), payloadCode, currentShellType);
+            }
+        } catch (e) {
+            appendLog("[-] Raw Bridge error: " + e.message);
+        }
+        return "";
+    }
+
+    function promptMkdir() {
+        let folderName = prompt("Enter new directory name:", "NewFolder");
+        if (!folderName) return;
+
+        let normalizedParent = activeFolderPath.endsWith('/') ? activeFolderPath : activeFolderPath + '/';
+        let targetMkdirPath = normalizedParent + folderName;
+
+        executeFtpActionWithUI('mkdir', targetMkdirPath, () => {
+            refreshCurrentFolder();
+        });
+    }
+
+    function refreshCurrentFolder() {
+        loadDirectoryContents(activeFolderPath);
+    }
+
+    function viewFile(fileName) {
+        let normalizedParent = activeFolderPath.endsWith('/') ? activeFolderPath : activeFolderPath + '/';
+        let filePath = normalizedParent + fileName;
+        
+        document.getElementById('modalTitle').innerText = "View / Edit: " + fileName;
+        document.getElementById('fileEditorText').value = "Loading file content...";
+        document.getElementById('editorModal').style.display = 'flex';
+        
+        executeFtpActionRaw('download', filePath).then(result => {
+            if (result.startsWith("[+] SUCCESS_DOWNLOAD")) {
+                let base64Content = result.replace("[+] SUCCESS_DOWNLOAD", "").trim();
+                try {
+                    let decodedText = decodeURIComponent(escape(atob(base64Content)));
+                    document.getElementById('fileEditorText').value = decodedText;
+                } catch(e) {
+                    document.getElementById('fileEditorText').value = "[Binary Data]";
+                }
+            } else {
+                document.getElementById('fileEditorText').value = "Failed to load content.";
+            }
+        });
+    }
+
+    function saveAndUploadFile() {
+        let title = document.getElementById('modalTitle').innerText;
+        let fileName = title.replace("View / Edit: ", "").trim();
+        let normalizedParent = activeFolderPath.endsWith('/') ? activeFolderPath : activeFolderPath + '/';
+        let filePath = normalizedParent + fileName;
+
+        let content = document.getElementById('fileEditorText').value;
+        let base64Content = btoa(unescape(encodeURIComponent(content)));
+
+        executeFtpActionWithUI('upload', filePath, () => {
+            refreshCurrentFolder();
+        }, base64Content);
+        closeModal();
+    }
+
+    function closeModal() {
+        document.getElementById('editorModal').style.display = 'none';
+    }
+
+    function triggerUpload() {
+        let input = document.createElement('input');
+        input.type = 'file';
+        input.onchange = e => {
+            let file = e.target.files[0];
+            if (!file) return;
+
+            let reader = new FileReader();
+            reader.onload = function (evt) {
+                let bytes = new Uint8Array(evt.target.result);
+                let binary = '';
+                for (let i = 0; i < bytes.byteLength; i++) {
+                    binary += String.fromCharCode(bytes[i]);
+                }
+                let base64Content = btoa(binary);
+                let normalizedParent = activeFolderPath.endsWith('/') ? activeFolderPath : activeFolderPath + '/';
+                let targetPath = normalizedParent + file.name;
+
+                executeFtpActionWithUI('upload', targetPath, () => {
+                    refreshCurrentFolder();
+                }, base64Content);
+            };
+            reader.readAsArrayBuffer(file);
+        };
+        input.click();
+    }
+
+    function triggerDownload(fileName) {
+        let normalizedParent = activeFolderPath.endsWith('/') ? activeFolderPath : activeFolderPath + '/';
+        let filePath = normalizedParent + fileName;
+
+        executeFtpActionRaw('download', filePath).then(result => {
+            if (result.startsWith("[+] SUCCESS_DOWNLOAD")) {
+                let base64Content = result.replace("[+] SUCCESS_DOWNLOAD", "").trim();
+                let a = document.createElement('a');
+                a.href = "data:application/octet-stream;base64," + base64Content;
+                a.download = fileName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+    }
+
+    function selectRow(trElement, fileName, isDir) {
+        document.querySelectorAll('.attr-table tr').forEach(tr => tr.classList.remove('selected'));
+        trElement.classList.add('selected');
+        selectedItemName = fileName;
+        selectedItemIsDir = isDir;
+    }
+
+    function showContextMenu(e, fileName, isDir) {
+        e.preventDefault();
+        selectedItemName = fileName;
+        selectedItemIsDir = isDir;
+        contextMenu.style.left = `${e.pageX}px`;
+        contextMenu.style.top = `${e.pageY}px`;
+        contextMenu.style.display = 'block';
+    }
+
+    function handleMenuAction(action) {
+        contextMenu.style.display = 'none';
+        let normalizedParent = activeFolderPath.endsWith('/') ? activeFolderPath : activeFolderPath + '/';
+
+        if (action === 'edit') {
+            if (selectedItemIsDir) return;
+            viewFile(selectedItemName);
+        } else if (action === 'mkdir') {
+            promptMkdir();
+        } else if (action === 'download') {
+            if (selectedItemIsDir) return;
+            triggerDownload(selectedItemName);
+        } else if (action === 'upload') {
+            triggerUpload();
+        } else if (action === 'delete') {
+            if (confirm(`Delete ${selectedItemName}?`)) {
+                executeFtpActionWithUI('delete', normalizedParent + selectedItemName, () => {
+                    refreshCurrentFolder();
+                });
+            }
+        }
+    }
+
+    async function executeFtpActionWithUI(actionType, targetPath, callback, extraContent = "") {
+        if (isRunning) return;
+        isRunning = true;
+        try {
+            let rawResult = await executeFtpActionRaw(actionType, targetPath, extraContent);
+            appendLog("[Output]: " + rawResult);
+            if (callback)
+                callback();
+        } catch (e) {
+            appendLog("[-] Error: " + e.message);
+        } finally {
+            isRunning = false;
+        }
+    }
+</script>
+
+</body>
+</html>
