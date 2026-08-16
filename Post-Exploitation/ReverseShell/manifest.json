@@ -7,6 +7,8 @@
         "PHP/v7.X/OneShell",
         "PHP/v8.X/OneShell",
         "ASPX/NebulaPulsar/DarkMatter",
+        "ASMX/NebulaPulsar/DarkMatter",
+        "ASHX/NebulaPulsar/DarkMatter",
         "JSP/NebulaPulsar(Java 8)/DarkMatter",
         "JSP/NebulaPulsar(Java 11)/DarkMatter",
         "JSPX/NebulaPulsar(Java 8)/DarkMatter",
