@@ -4,7 +4,12 @@
     "author": "iss4cf0ng/ISSAC",
     "environment": [
         "ASPX/NebulaPulsar/DarkMatter",
-        "JSP/NebulaPulsar/DarkMatter"
+        "JSP/NebulaPulsar(Java 8)/DarkMatter",
+        "JSP/NebulaPulsar(Java 11)/DarkMatter",
+        "JSPX/NebulaPulsar(Java 8)/DarkMatter",
+        "JSPX/NebulaPulsar(Java 11)/DarkMatter",
+        "CFM/NebulaPulsar(Java 8)/DarkMatter",
+        "CFM/NebulaPulsar(Java 11)/DarkMatter"
     ],
     "description": "Inject shellcode to a specified process."
 }

@@ -10,9 +10,12 @@
         "ASPX/NebulaPulsar/DarkMatter",
         "ASHX/NebulaPulsar/DarkMatter",
         "ASMX/NebulaPulsar/DarkMatter",
-        "JSP/NebulaPulsar/DarkMatter",
-        "JSPX/NebulaPulsar/DarkMatter",
-        "CFM/NebulaPulsar/DarkMatter"
+        "JSP/NebulaPulsar(Java 8)/DarkMatter",
+        "JSP/NebulaPulsar(Java 11)/DarkMatter",
+        "JSPX/NebulaPulsar(Java 8)/DarkMatter",
+        "JSPX/NebulaPulsar(Java 11)/DarkMatter",
+        "CFM/NebulaPulsar(Java 8)/DarkMatter",
+        "CFM/NebulaPulsar(Java 11)/DarkMatter"
     ],
     "description": "AD Explorer"
 }
