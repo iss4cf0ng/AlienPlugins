@@ -473,6 +473,16 @@
         try {
             if (window.chrome && window.chrome.webview && window.chrome.webview.hostObjects.nativeBridge) {
                 const bridge = window.chrome.webview.hostObjects.nativeBridge;
+                
+                currentDir = window.location.pathname.substring(1, window.location.pathname.lastIndexOf('/') + 1);
+
+                const availableJson = await bridge.fnAvailableEnvironment(currentDir);
+                const available = JSON.parse(availableJson || "[]");
+
+                pluginManifest = {
+                    "supportedLangs": available
+                };
+                
                 currentShellType = await bridge.fnGetShellType();
 
                 if (pluginManifest.supportedLangs.includes(currentShellType)) {

